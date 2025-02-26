@@ -31,9 +31,9 @@ export async function signInWithGoogle() {
         email: user.email,
         name: user.displayName,
         photoUrl: user.photoURL,
-        firebaseId: user.uid
+        firebaseId: user.uid,
       }),
-      credentials: "include"
+      credentials: "include",
     });
 
     if (!res.ok) {
@@ -43,8 +43,10 @@ export async function signInWithGoogle() {
     return user;
   } catch (error: any) {
     console.error("Error signing in with Google", error);
-    if (error.code === 'auth/configuration-not-found') {
-      throw new Error("Firebase configuration error. Please ensure the app URL is added to authorized domains in Firebase Console.");
+    if (error.code === "auth/configuration-not-found") {
+      throw new Error(
+        "Firebase configuration error. Please ensure the app URL is added to authorized domains in Firebase Console.",
+      );
     }
     throw error;
   }
