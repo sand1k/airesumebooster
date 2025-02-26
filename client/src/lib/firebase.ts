@@ -9,6 +9,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
@@ -17,6 +18,10 @@ export async function signInWithGoogle() {
   try {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
+
+    if (!user.email || !user.displayName) {
+      throw new Error("Missing required user information");
+    }
 
     // Register user with our backend
     const res = await fetch("/api/auth/register", {
@@ -36,8 +41,11 @@ export async function signInWithGoogle() {
     }
 
     return user;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error signing in with Google", error);
+    if (error.code === 'auth/configuration-not-found') {
+      throw new Error("Firebase configuration error. Please ensure the app URL is added to authorized domains in Firebase Console.");
+    }
     throw error;
   }
 }

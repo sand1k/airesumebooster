@@ -13,11 +13,12 @@ export default function Login() {
     try {
       await signInWithGoogle();
       setLocation("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Login error:", error);
       toast({
         variant: "destructive",
         title: "Authentication Error",
-        description: "Failed to sign in with Google. Please try again."
+        description: error.message || "Failed to sign in with Google. Please try again."
       });
     }
   };
