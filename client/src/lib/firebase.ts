@@ -17,9 +17,9 @@ export async function signInWithGoogle() {
   try {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
-    
+
     // Register user with our backend
-    await fetch("/api/auth/register", {
+    const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -27,8 +27,13 @@ export async function signInWithGoogle() {
         name: user.displayName,
         photoUrl: user.photoURL,
         firebaseId: user.uid
-      })
+      }),
+      credentials: "include"
     });
+
+    if (!res.ok) {
+      throw new Error("Failed to register user with backend");
+    }
 
     return user;
   } catch (error) {
