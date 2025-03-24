@@ -1,16 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { UploadIcon } from "lucide-react";
+import { UploadIcon, LogOut } from "lucide-react";
 import ResumeUpload from "@/components/resume-upload";
+import { signOut } from "@/lib/firebase";
 import type { Resume } from "@shared/schema";
 
 export default function Dashboard() {
+  const [, setLocation] = useLocation();
   const { data: resumes, isLoading } = useQuery<Resume[]>({
     queryKey: ['/api/resumes']
   });
+
+  const handleLogout = async () => {
+    await signOut();
+    setLocation('/login');
+  };
 
   if (isLoading) {
     return (
@@ -29,7 +36,16 @@ export default function Dashboard() {
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <h1 className="text-4xl font-bold">Your Resumes</h1>
-          <ResumeUpload />
+          <div className="flex items-center gap-4">
+            <ResumeUpload />
+            <Button 
+              variant="outline"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         <ScrollArea className="h-[600px] pr-4">

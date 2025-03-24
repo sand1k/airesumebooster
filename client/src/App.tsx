@@ -38,13 +38,13 @@ function Router() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <div className="app">
+        <Router />
+        <Toaster />
+      </div>
     </QueryClientProvider>
   );
 }
-
-export default App;
