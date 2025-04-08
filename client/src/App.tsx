@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import ResumeView from "@/pages/resume-view";
+import VerifyEmail from "@/pages/verify-email";
 import NotFound from "@/pages/not-found";
 
 function PrivateRoute({ component: Component }: { component: React.ComponentType }) {
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={() => <PrivateRoute component={Dashboard} />} />
       <Route path="/resume/:id" component={() => <PrivateRoute component={ResumeView} />} />
+      <Route path="/verify-email" component={VerifyEmail} />
       <Route component={NotFound} />
     </Switch>
   );

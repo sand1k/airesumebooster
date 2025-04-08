@@ -3,16 +3,67 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { UploadIcon, LogOut } from "lucide-react";
+import { UploadIcon, LogOut, AlertTriangleIcon, MailIcon } from "lucide-react";
 import ResumeUpload from "@/components/resume-upload";
-import { signOut } from "@/lib/firebase";
+import { auth, signOut, sendVerificationEmail } from "@/lib/firebase";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
 import type { Resume } from "@shared/schema";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
+  const [isEmailVerified, setIsEmailVerified] = useState<boolean | null>(null);
+  const [sendingVerification, setSendingVerification] = useState(false);
+  const { toast } = useToast();
+  
   const { data: resumes, isLoading } = useQuery<Resume[]>({
     queryKey: ['/api/resumes']
   });
+
+  // Check if the user's email is verified
+  useEffect(() => {
+    const checkEmailVerification = () => {
+      const user = auth.currentUser;
+      if (user) {
+        setIsEmailVerified(user.emailVerified);
+      }
+    };
+    
+    // Check immediately
+    checkEmailVerification();
+    
+    // Set up listener for auth state changes
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        setIsEmailVerified(user.emailVerified);
+      } else {
+        // Not logged in
+        setLocation('/login');
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [setLocation]);
+  
+  const handleResendVerification = async () => {
+    try {
+      setSendingVerification(true);
+      await sendVerificationEmail();
+      toast({
+        title: "Verification Email Sent",
+        description: "Please check your inbox and click the verification link."
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to send verification email."
+      });
+    } finally {
+      setSendingVerification(false);
+    }
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -34,6 +85,31 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto space-y-8">
+        {isEmailVerified === false && (
+          <Alert className="bg-amber-50 border-amber-200 mb-6">
+            <AlertTriangleIcon className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-amber-800">Email Not Verified</AlertTitle>
+            <AlertDescription className="text-amber-700">
+              Please verify your email address to unlock all features. 
+              <Button
+                variant="link"
+                className="px-2 text-amber-800 font-semibold underline"
+                onClick={handleResendVerification}
+                disabled={sendingVerification}
+              >
+                {sendingVerification ? (
+                  <>Sending verification email...</>
+                ) : (
+                  <>
+                    <MailIcon className="h-4 w-4 mr-1" />
+                    Resend verification email
+                  </>
+                )}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <div className="flex items-center justify-between">
           <h1 className="text-4xl font-bold">Your Resumes</h1>
           <div className="flex items-center gap-4">

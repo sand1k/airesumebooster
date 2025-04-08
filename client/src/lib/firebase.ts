@@ -1,5 +1,14 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { 
+  getAuth, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  sendEmailVerification,
+  applyActionCode,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
+  sendPasswordResetEmail
+} from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -54,6 +63,55 @@ export async function signInWithGoogle() {
 
 export function signOut() {
   return auth.signOut();
+}
+
+/**
+ * Sends email verification to the currently signed-in user
+ * @returns Promise that resolves when the email verification is sent
+ */
+export async function sendVerificationEmail() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error("No user is currently signed in");
+  }
+  
+  try {
+    await sendEmailVerification(currentUser);
+    return true;
+  } catch (error) {
+    console.error("Error sending verification email:", error);
+    throw error;
+  }
+}
+
+/**
+ * Verifies the user's email with the action code from the verification link
+ * @param actionCode The code from the verification link
+ * @returns Promise that resolves when the email is verified
+ */
+export async function verifyEmail(actionCode: string) {
+  try {
+    await applyActionCode(auth, actionCode);
+    return true;
+  } catch (error) {
+    console.error("Error verifying email:", error);
+    throw error;
+  }
+}
+
+/**
+ * Sends a password reset email to the specified email address
+ * @param email The email address to send the password reset to
+ * @returns Promise that resolves when the password reset email is sent
+ */
+export async function resetPassword(email: string) {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return true;
+  } catch (error) {
+    console.error("Error sending password reset email:", error);
+    throw error;
+  }
 }
 
 export { auth };

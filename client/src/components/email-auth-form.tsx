@@ -13,8 +13,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, sendVerificationEmail } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { InfoIcon, CheckCircleIcon, MailIcon } from "lucide-react";
 
 // Define the base form types
 interface LoginFormData {
@@ -49,6 +51,7 @@ interface EmailAuthFormProps {
 
 export default function EmailAuthForm({ mode, onSuccess }: EmailAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [verificationEmailSent, setVerificationEmailSent] = useState(false);
   const { toast } = useToast();
   
   // Use the appropriate schema based on the current mode
@@ -75,17 +78,54 @@ export default function EmailAuthForm({ mode, onSuccess }: EmailAuthFormProps) {
       password: "",
       ...(mode === "register" ? { passwordConfirm: "" } : {}),
     } as any); // Cast to any to avoid type issues with conditional fields
+    // Also reset verification status
+    setVerificationEmailSent(false);
   }, [mode, form]);
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     try {
       if (mode === "register") {
-        await createUserWithEmailAndPassword(auth, data.email, data.password);
+        // Create the user account
+        const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+        
+        // Send verification email
+        await sendVerificationEmail();
+        
+        // Show success message
+        setVerificationEmailSent(true);
+        
+        toast({
+          title: "Registration Successful",
+          description: "A verification email has been sent to your email address.",
+        });
+        
+        // Don't call onSuccess yet - they need to verify their email
       } else {
+        // Login flow
         await signInWithEmailAndPassword(auth, data.email, data.password);
+        
+        // Check email verification status
+        const user = auth.currentUser;
+        if (user && !user.emailVerified) {
+          // If email isn't verified, show warning and do NOT log them in
+          toast({
+            variant: "destructive",
+            title: "Email Not Verified",
+            description: "Please verify your email before logging in.",
+          });
+          
+          // Set verification status to show resend option
+          setVerificationEmailSent(true);
+          
+          // Sign out the user since they can't proceed without verification
+          auth.signOut();
+          return;
+        }
+        
+        // Complete the login (only for verified emails)
+        onSuccess();
       }
-      onSuccess();
     } catch (error: any) {
       console.error("Authentication error:", error);
       toast({
@@ -97,10 +137,81 @@ export default function EmailAuthForm({ mode, onSuccess }: EmailAuthFormProps) {
       setIsLoading(false);
     }
   };
+  
+  const resendVerificationEmail = async () => {
+    try {
+      setIsLoading(true);
+      await sendVerificationEmail();
+      toast({
+        title: "Email Sent",
+        description: "A new verification email has been sent to your address.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to send verification email.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (verificationEmailSent) {
+    return (
+      <div className="space-y-4">
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircleIcon className="h-4 w-4 text-green-600" />
+          <AlertTitle className="text-green-800">Verification Email Sent</AlertTitle>
+          <AlertDescription className="text-green-700">
+            We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.
+          </AlertDescription>
+        </Alert>
+        
+        <div className="text-center space-y-4 my-4">
+          <p className="text-sm text-muted-foreground">
+            Didn't receive the email? Check your spam folder or click below to resend.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={resendVerificationEmail}
+            disabled={isLoading}
+            className="w-full"
+          >
+            <MailIcon className="mr-2 h-4 w-4" />
+            {isLoading ? "Sending..." : "Resend Verification Email"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              // Clear verification status and go back to login mode
+              setVerificationEmailSent(false);
+              auth.signOut();
+            }}
+            className="w-full mt-2"
+          >
+            Return to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 w-full">
+        {mode === "register" && (
+          <Alert className="bg-blue-50 border-blue-200">
+            <InfoIcon className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-800">Email Verification Required</AlertTitle>
+            <AlertDescription className="text-blue-700">
+              After registration, you'll need to verify your email address before accessing all features.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <FormField
           control={form.control}
           name="email"
