@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -47,11 +48,13 @@ const registerSchema = loginSchema.extend({
 interface EmailAuthFormProps {
   mode: "register" | "login";
   onSuccess: () => void;
+  onSwitchMode?: () => void;
 }
 
-export default function EmailAuthForm({ mode, onSuccess }: EmailAuthFormProps) {
+export default function EmailAuthForm({ mode, onSuccess, onSwitchMode }: EmailAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [verificationEmailSent, setVerificationEmailSent] = useState(false);
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   
   // Use the appropriate schema based on the current mode
@@ -189,6 +192,14 @@ export default function EmailAuthForm({ mode, onSuccess }: EmailAuthFormProps) {
               // Clear verification status and go back to login mode
               setVerificationEmailSent(false);
               auth.signOut();
+              
+              // If onSwitchMode is provided, use it to toggle back to login mode
+              if (onSwitchMode && mode === "register") {
+                onSwitchMode();
+              } else {
+                // Fallback to direct navigation
+                setLocation("/login");
+              }
             }}
             className="w-full mt-2"
           >
@@ -202,15 +213,6 @@ export default function EmailAuthForm({ mode, onSuccess }: EmailAuthFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 w-full">
-        {mode === "register" && (
-          <Alert className="bg-blue-50 border-blue-200">
-            <InfoIcon className="h-4 w-4 text-blue-600" />
-            <AlertTitle className="text-blue-800">Email Verification Required</AlertTitle>
-            <AlertDescription className="text-blue-700">
-              After registration, you'll need to verify your email address before accessing all features.
-            </AlertDescription>
-          </Alert>
-        )}
         
         <FormField
           control={form.control}
