@@ -14,10 +14,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { auth, sendVerificationEmail } from "@/lib/firebase";
+import { auth, sendVerificationEmail, resetPassword } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { InfoIcon, CheckCircleIcon, MailIcon } from "lucide-react";
+import { InfoIcon, CheckCircleIcon, MailIcon, ArrowLeftIcon } from "lucide-react";
 
 // Define the base form types
 interface LoginFormData {
@@ -54,6 +54,7 @@ interface EmailAuthFormProps {
 export default function EmailAuthForm({ mode, onSuccess, onSwitchMode }: EmailAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [verificationEmailSent, setVerificationEmailSent] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   
@@ -160,6 +161,89 @@ export default function EmailAuthForm({ mode, onSuccess, onSwitchMode }: EmailAu
     }
   };
 
+  // Function to handle password reset requests
+  const handleResetPassword = async (email: string) => {
+    try {
+      setIsLoading(true);
+      await resetPassword(email);
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your email for a password reset link.",
+      });
+      // Return to login form
+      setShowForgotPassword(false);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to send password reset email.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Create forms for all possible states - to avoid React hooks within conditionals
+  const forgotPasswordForm = useForm({
+    resolver: zodResolver(
+      z.object({
+        email: z.string().email("Please enter a valid email address"),
+      })
+    ),
+    defaultValues: {
+      email: form.getValues().email || "", // Pre-fill with email from main form if available
+    },
+  });
+  
+  // Render the forgot password form
+  if (showForgotPassword) {
+    return (
+      <div className="space-y-4">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mb-2 flex items-center text-sm"
+          onClick={() => setShowForgotPassword(false)}
+        >
+          <ArrowLeftIcon className="h-4 w-4 mr-1" /> Back to login
+        </Button>
+        
+        <Form {...forgotPasswordForm}>
+          <form 
+            onSubmit={forgotPasswordForm.handleSubmit((data) => handleResetPassword(data.email))}
+            className="space-y-4 w-full"
+          >
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-medium">Reset Your Password</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Enter your email address and we'll send you a link to reset your password.
+              </p>
+            </div>
+            
+            <FormField
+              control={forgotPasswordForm.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="Enter your email" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Sending..." : "Send Reset Instructions"}
+            </Button>
+          </form>
+        </Form>
+      </div>
+    );
+  }
+
   if (verificationEmailSent) {
     return (
       <div className="space-y-4">
@@ -232,7 +316,17 @@ export default function EmailAuthForm({ mode, onSuccess, onSwitchMode }: EmailAu
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <div className="flex justify-between items-center">
+                <FormLabel>Password</FormLabel>
+                {mode === "login" && (
+                  <Button variant="link" className="p-0 h-auto text-xs" onClick={(e) => {
+                    e.preventDefault();
+                    setShowForgotPassword(true);
+                  }}>
+                    Forgot password?
+                  </Button>
+                )}
+              </div>
               <FormControl>
                 <Input type="password" placeholder="Enter your password" {...field} />
               </FormControl>

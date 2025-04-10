@@ -9,6 +9,7 @@ import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import ResumeView from "@/pages/resume-view";
 import VerifyEmail from "@/pages/verify-email";
+import ResetPassword from "@/pages/reset-password";
 import NotFound from "@/pages/not-found";
 
 function PrivateRoute({ component: Component }: { component: React.ComponentType }) {
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/dashboard" component={() => <PrivateRoute component={Dashboard} />} />
       <Route path="/resume/:id" component={() => <PrivateRoute component={ResumeView} />} />
       <Route path="/verify-email" component={VerifyEmail} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route component={NotFound} />
     </Switch>
   );
