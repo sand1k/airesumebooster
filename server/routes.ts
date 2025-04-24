@@ -4,6 +4,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { analyzeResume } from "../client/src/lib/openai";
 import { insertUserSchema, insertResumeSchema, insertSuggestionSchema } from "@shared/schema";
+import { auth } from "./auth"; // Assuming auth module is available
 
 interface AuthenticatedRequest extends Request {
   user?: { id: number };
@@ -13,6 +14,13 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== 'application/pdf') {
+      cb(new Error('Only PDF files are allowed'));
+      return;
+    }
+    cb(null, true);
   }
 });
 
@@ -48,11 +56,20 @@ export async function registerRoutes(app: Express) {
   });
 
   app.post("/api/resumes/upload", upload.single("file"), async (req: AuthenticatedRequest, res) => {
-    if (!req.file || !req.user?.id) {
-      return res.status(400).json({ message: "No file uploaded or user not authenticated" });
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
     }
 
     try {
+      const idToken = authHeader.split('Bearer ')[1];
+      const decodedToken = await auth.verifyIdToken(idToken);
+      req.user = { id: parseInt(decodedToken.uid) };
+
       // Store file and get URL
       const fileUrl = `data:application/pdf;base64,${req.file.buffer.toString("base64")}`;
 

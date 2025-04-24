@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Upload } from "lucide-react";
+import { auth } from "@/lib/firebase";
 
 export default function ResumeUpload() {
   const [isUploading, setIsUploading] = useState(false);
@@ -13,17 +14,30 @@ export default function ResumeUpload() {
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
+      // Check if user is authenticated
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error("Please sign in to upload resumes");
+      }
+
       const formData = new FormData();
       formData.append("file", file);
       
+      // Get the ID token
+      const idToken = await user.getIdToken();
+      
       const res = await fetch("/api/resumes/upload", {
         method: "POST",
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        },
         body: formData,
         credentials: "include"
       });
       
       if (!res.ok) {
-        throw new Error("Upload failed");
+        const errorData = await res.json().catch(() => ({ message: "Unknown error" }));
+        throw new Error(errorData.message || `Upload failed with status ${res.status}`);
       }
       
       return res.json();
