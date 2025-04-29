@@ -1,4 +1,5 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { QueryClient, QueryFunction, QueryKey } from "@tanstack/react-query";
+import { auth } from "./firebase";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -41,10 +42,33 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+type QueryKeyType = readonly [string, ...unknown[]];
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
+      queryFn: async ({ queryKey }) => {
+        const url = queryKey[0];
+        if (typeof url !== 'string') {
+          throw new Error('Query key must be a string URL');
+        }
+        
+        // Get the current user's token
+        const token = await auth.currentUser?.getIdToken();
+        
+        const response = await fetch(url, {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error(`API call failed: ${response.statusText}`);
+        }
+
+        return response.json();
+      },
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: Infinity,

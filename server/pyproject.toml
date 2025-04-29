@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "airesumebooster"
+version = "0.1.0"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",  # for file uploads
+    "firebase-admin",
+    "python-jose[cryptography]",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"] 
