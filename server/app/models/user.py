@@ -1,10 +1,14 @@
-from pydantic import BaseModel
+"""User model module"""
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class User(BaseModel):
-    """User model"""
     id: str
     email: str
-    name: Optional[str] = None
-    photo_url: Optional[str] = None
-    firebase_id: str 
+    name: str
+    photoUrl: Optional[str] = Field(None, alias="photo_url")
+    emailVerified: bool = Field(False, alias="email_verified")
+
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {"examples": [{"id": "123", "email": "user@example.com", "name": "User"}]} 

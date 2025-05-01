@@ -4,15 +4,20 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 import os
 from pathlib import Path
-from .routes import auth, resumes
+
+# Load environment variables first
+from .env import PROJECT_ROOT, ENVIRONMENT, IS_DEVELOPMENT
+
+from .routes import auth_router, resumes_router
 from .config import API_PREFIX, PROJECT_NAME
 from .firebase import initialize_firebase
-
-# Get the project root directory (2 levels up from this file)
-PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
+from .storage import get_storage
 
 # Initialize Firebase Admin SDK
 initialize_firebase()
+
+# Initialize Firebase Storage (this will create the singleton instance)
+storage = get_storage()
 
 app = FastAPI(
     title=PROJECT_NAME,
@@ -22,7 +27,7 @@ app = FastAPI(
 )
 
 # Configure CORS based on environment
-origins = ["http://localhost:5000"] if os.getenv("ENVIRONMENT") == "development" else ["*"]
+origins = ["http://localhost:5000"] if IS_DEVELOPMENT else ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -33,20 +38,20 @@ app.add_middleware(
 
 # Include routers
 app.include_router(
-    auth.router,
+    auth_router,
     prefix=f"{API_PREFIX}/auth",
     tags=["auth"]
 )
 
 app.include_router(
-    resumes.router,
+    resumes_router,
     prefix=f"{API_PREFIX}/resumes",
     tags=["resumes"]
 )
 
 @app.get("/healthcheck")
 async def root():
-    return {"status": "healthy", "environment": os.getenv("ENVIRONMENT", "unknown")}
+    return {"status": "healthy", "environment": ENVIRONMENT}
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
@@ -56,7 +61,7 @@ async def http_exception_handler(request, exc):
     )
 
 # In production, serve static files
-if os.getenv("ENVIRONMENT") == "production":
+if IS_DEVELOPMENT:
     static_dir = PROJECT_ROOT / "dist" / "public"
     if not static_dir.exists():
         raise RuntimeError(f"Static directory '{static_dir}' does not exist. Please run 'npm run build' first.")

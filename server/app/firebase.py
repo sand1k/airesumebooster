@@ -29,7 +29,9 @@ def initialize_firebase():
             }
             
             cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
+            firebase_admin.initialize_app(cred, {
+                'storageBucket': f"{os.getenv('VITE_FIREBASE_PROJECT_ID')}.appspot.com"
+            })
             print("Firebase Admin SDK initialized successfully")
         else:
             print("Firebase Admin SDK already initialized")
